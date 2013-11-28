@@ -4,6 +4,18 @@
 # get a list of selected jpgs in the folder
 # convert them to pdf in the same name
 
+
+### todo: PHOTOSEVA ###############################################
+# convert jpg to pdf
+# convert pdf to jpg
+# convert multiple pdfs/imgs to single pdf
+
+# get the passport size photo from the scan
+# scaling tools
+# cloning tools
+# 
+###################################################################
+
 import os, Image
 
 desktop = "C:\Documents and Settings\Administrator\Desktop\jpg2pdf\\"
