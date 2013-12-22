@@ -2,15 +2,13 @@ import Image
 import pyPdf
 import os
 
-PATH = "/home/salapati/Desktop/testPhoto/"
-
-FORMATS = ['jpg', 'jpeg', 'png','tga','tif']
-
+PATH = "C:\Documents and Settings\Administrator\Desktop\jpg2pdf\\"
+FORMATS = ['jpg', 'JPG', 'jpeg', 'png','tga','tif']
 SELECTION = [photo for photo in os.listdir(PATH)]
-
 photos = [phot for photo in SELECTION if str(photo.split('.')[-1]) in FORMATS]
 pdfs = []
 
+# resize
 for photo in photos:
 	size = os.path.getsize( PATH + phot)
 	while size >= fileSize:
