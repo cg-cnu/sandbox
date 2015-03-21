@@ -1,7 +1,9 @@
 # ability to refresh nodes
 # ability to pick the channel naming convention
 # get the frames name right
-# get the node names and labels right.
+# get the node names and labels right. Why both names and labesl..? How to use it right..?
+# have to give both name and labes.
+# labes for representation on the screen. can give it more visually.
 # generate based on the subfolders
 
 bl_info = {
@@ -26,7 +28,6 @@ bpy.types.Scene.udimGroupName = StringProperty(
 
 from bpy_extras.image_utils import load_image
 
-
 class UIPanel(bpy.types.Panel):
     bl_label = "Property panel"
     bl_space_type = "NODE_EDITOR"
@@ -36,7 +37,9 @@ class UIPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scn = bpy.context.scene
-        # sub folders... ? 
+        # sub folders check ? 
+        # group check ?
+        # format... ?
         #layout.prop(scn, 'MyBool')
         layout.prop(scn, 'udimPath')
         layout.prop(scn, 'udimGroupName')
@@ -74,7 +77,7 @@ class UdimNodeCreator(bpy.types.Operator):
         # clear the input
         # bpy.context.scene["udimPath"] = ""
         # print (udimPath)
-        # udimGroupName = bpy.context.scene['udimGroupName']
+        udimGroupName = bpy.context.scene['udimGroupName']
         # print (groupName)
         #################################
 
@@ -90,7 +93,7 @@ class UdimNodeCreator(bpy.types.Operator):
             activeMaterial.use_nodes = True
 
         # create new group
-        group = bpy.data.node_groups.new(type="ShaderNodeTree", name="testgroup")
+        group = bpy.data.node_groups.new(type="ShaderNodeTree", name=udimGroupName)
         # get the nodes of the group
         nodes = group.nodes
         # get the links of the group
@@ -98,16 +101,31 @@ class UdimNodeCreator(bpy.types.Operator):
 
         # get the textues from the list
         textures = os.listdir(udimPath)
-        #print(textures)
+        # textures = []
+		# for rootPath, folders, files in os.walk(udimPath):
+		# 	for file in files:
+		# 		textures.append( os.path.join(rootPath, file) )
+		
+		print(textures)
+
+        #if not texture:
+        	# print a message saying no textures found.
+
+        # need to find out the formats in which the regular mari / mudbox stuff is written out.
+        # based on that need to change the way in which we can organize it in the revers order
+
+        # may be take the input from the user regarding the naming conventions ???
 
         # get the udims in reverse orde
         udims = []
         for texture in textures:
             udim = texture.split(".")[-2]
+            # check if its an udim using re
+            # if not exclude it.
             udims.append(udim)
         udims.sort(reverse=True)
 
-        # get sorted textures:
+        # get sorted textures based on the udim.
         sortedTextures = []
         for udim in udims:
             for texture in textures:
@@ -115,14 +133,14 @@ class UdimNodeCreator(bpy.types.Operator):
                     sortedTextures.append(texture)
         # print (sortedTextures)
 
-
         # create a texture coordinate node and later connect all the mapping nodes to this node
         texCordNode = nodes.new("ShaderNodeTexCoord")
+        texCordNode.label = udimGroupName+"TexCoord"
         texCordNode.location.y = ( 100 )
         texCordNode.location.x = -( 100 )
         texCordNode.select = False 
 
-        prevTexCheckerNode = None
+        prevTexCheckerInput = None
 
         for index, texture in enumerate(sortedTextures):  
 
@@ -132,90 +150,75 @@ class UdimNodeCreator(bpy.types.Operator):
             frame = nodes.new(type='NodeFrame')
             frame.label = udim
             frame.select = False
-            # nodesCreated.append(frame)            
 
-            #### create checker node ###
-            # create a checker map
-            # bpy.ops.node.add_node(type="ShaderNodeTexChecker", use_transform=True)
+            # create checker node
             texCheckerNode = nodes.new('ShaderNodeTexChecker')
-            texCheckerNode.name = texture+ "_texCheckNode"
+            texCheckerNode.label = udim + "_texChecker"
             texCheckerNode.inputs[3].default_value = 1
 
-            #texCheckerNode.location.y = -( 400 * index )
             texCheckerNode.location.x = 800
             texCheckerNode.parent = frame
 
-            # nodesCreated.append(texCheckerNode)
+            # may be finish it off and connect it to the ouput nodes directly over here...? 
+            # create the asset directly
+            # connect the first guy directly to output.
+            if index == 0:
+                output_node = group.nodes.new("NodeGroupOutput")
+                # get proper location on this guy
+                output_node.location.x = ( int( sortedTextures[0].split(".")[-2][-1] ) + 1 ) * 1000
+                output_node.location.y = ( int( sortedTextures[0].split(".")[-2][-2] ) + 2 ) * 400
+                group.outputs.new('NodeSocketColor', 'color')
+                links.new(texCheckerNode.outputs[0], output_node.inputs["color"])
 
-            #### link the checker node to prevous checker node if it already exists ####
-            if prevTexCheckerNode:
-                output_socket = texCheckerNode.outputs[0]
-                links.new(output_socket, prevTexCheckerNode)
+            # link the checker node to prevous checker node if it already exists 
+            if prevTexCheckerInput:
+                links.new(texCheckerNode.outputs[0], prevTexCheckerInput)
             else:
-                firstNode = True
-                if index == 0:
-                    firstNodeOut = texCheckerNode.outputs[0]
-
-            #### create texture node and set the image ####
-            texImgNode = nodes.new('ShaderNodeTexImage')
-            texImgNode.name =  "_".join(texture.split(".")[:-4] )
-
-            #texImgNode.location.y = -( 400 * index )
-            texImgNode.location.x = ( 400  )
-
-            texImgNode.parent = frame
-
-            # nodesCreated.append(texImgNode)
-
-            print(texImgNode.dimensions[0])
-            for i in dir(texImgNode):
-                if "dimensions" in i.lower():
-                    print (i)
-
-            # set the image
-            #bpy.ops.image.open(filepath="//bpy", directory="/home/salaati/Downloads/", files=[{"name":"rhAbnormalTitanC.diffuse.1002.tif", "name":"rhAbnormalTitanC.diffuse.1002.tif"}], relative_path=True)
+                swapNodes = False
+            # get the texture
+            # do some better optimizations in terms of what if the textures are already there in the file.
+            # right now its loading directly into it.
             texPath = os.path.join(udimPath, texture)
             tex = bpy.data.images.get(texPath)
             if not tex:
                tex = load_image(texPath)
+
+            # create texture node and set the texture
+            texImgNode = nodes.new('ShaderNodeTexImage')
+            texImgNode.label = udim + "_texImage"
+            texImgNode.name =  "_".join(texture.split(".")[:-4] )
+
+            #texImgNode.location.y = -( 400 * index )
+            texImgNode.location.x = ( 400  )
+            texImgNode.parent = frame
+
             # set and enable the texture
             texImgNode.image = tex
+            # is it needed... ?
             texImgNode.show_texture = True
 
+
             #### link checker map and the texture ####
-            # get the output socket
-            if firstNode:
-                output_socket = texImgNode.outputs[0]
-                # get the input socket 
-                input_socket = texCheckerNode.inputs[1]
-                # create the link between the output and the input
-                links.new(output_socket, input_socket)
-                prevTexCheckerNode = texCheckerNode.inputs[2]
-                firstNode = False
+            if swapNodes:
+                links.new(texImgNode.outputs[0], texCheckerNode.inputs[2])
+                prevTexCheckerInput = texCheckerNode.inputs[1]   
+                swapNodes = True
             else:
-                output_socket = texImgNode.outputs[0]
-                # get the input socket 
-                input_socket = texCheckerNode.inputs[2]
-                # create the link between the output and the input
-                links.new(output_socket, input_socket)
-                prevTexCheckerNode = texCheckerNode.inputs[1]   
-                firstNode = True
+                links.new(texImgNode.outputs[0], texCheckerNode.inputs[1])
+                # need a better name for this guy... 
+                prevTexCheckerInput = texCheckerNode.inputs[2]
+                swapNodes = False
 
             #### create a mapping node and set the values ####
-            #bpy.ops.node.add_node(type="ShaderNodeMapping", use_transform=True)
             mappingNode = nodes.new('ShaderNodeMapping')
-            # change the type to vector
-            # mappingNode.vector_type = "VECTOR"
             mappingNode.vector_type = "POINT"
             mappingNode.use_min = True
             mappingNode.use_max = True
-
-            # nodesCreated.append(mappingNode)
-            #mappingNode.location.y = -( 400 )
-            #mappingNode.location.x = -( 800  )
-             
+            
             mappingNode.parent = frame
 
+            # better algo over here..? 
+            # can make it more crypitc by reducing the lines... :P
             if udim[-1] == "0":
                 xMax = 10
                 yMin = 0
@@ -235,21 +238,12 @@ class UdimNodeCreator(bpy.types.Operator):
             # set max y
             mappingNode.max[1] = int( yMax )
 
-            #### link the mapping node and the checker node ####
-            output_socket = mappingNode.outputs[0]
-            input_socket = texCheckerNode.inputs[0]
-            links.new(output_socket, input_socket) 
+            # link the mapping node and the checker node
+            links.new(mappingNode.outputs[0], texCheckerNode.inputs[0])
+            # link the mappingNode to texCordNode 
+            links.new(texCordNode.outputs[2], mappingNode.inputs[0])
 
-            #### link the mappingNOde to texCordNode ####
-            output_socket = texCordNode.outputs[2] 
-            input_socket = mappingNode.inputs[0]
-            links.new(output_socket, input_socket)
-             
-            # save the checkerNode second color parameter for the next loop
-            # prevTexCheckerNode = texCheckerNode.inputs[2]
-            #frame.location.x = 0
-            #frame.location.y = 0
-
+            # define the location of the frame
             if udim[-1] == "0":
                 frame.location.x = ( int( 9 ) * 1100 )
                 frame.location.y = ( int( udim[-2] ) ) * 600
@@ -257,43 +251,7 @@ class UdimNodeCreator(bpy.types.Operator):
                 frame.location.x = ( int( udim[-1] ) -1 ) * 1100
                 frame.location.y = ( int( udim[-2] ) +1 ) * 600
         
-        # for node in nodesCreated:
-            # if node.select == False:
-            #     node.select = True
-
-        # bpy.ops.node.group_make()
-
-        # nodes = bpy.context.space_data.node_tree.nodes
-        # links = bpy.context.space_data.node_tree.links
-        # print (nodes)
-        # tree = active.node_tree
-        # nodes = tree.nodes
-        # links = tree.links
-        #nodeGrp.active_output = 0
-        # for node in nodes:
-            # print ( dir(node) )
-            # print (node.type)
-            # if node.type == "GROUP":
-            #     groupNodes = node.node_tree.nodes
-            #     for groupNode in groupNodes:
-            #         print ( node.type )
-            #         if groupNode.type == "GROUP_OUTPUT":
-            #             groupOutput = groupNode
-        # print ( dir( groupOutput.inputs ) )
-        output_node = group.nodes.new("NodeGroupOutput")
-        # get proper location on this guy
-        output_node.location.x = ( int( sortedTextures[0].split(".")[-2][-1] ) + 1 ) * 1000
-        output_node.location.y = ( int( sortedTextures[0].split(".")[-2][-2] ) + 2 ) * 400
-        group.outputs.new('NodeSocketColor', 'color')
-        # output_node.location = (600, 0)
-        # print (( groupOutput.inputs[1]) )
-        # print (firstNodeOut)
-        links.new(firstNodeOut, output_node.inputs["color"])
-        #if groupOutput:
-        #links.new(firstNodeOut, )
         bpy.ops.node.group_edit(exit=False)
-
-#################################
 
         return {'FINISHED'}
 

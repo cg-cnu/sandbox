@@ -21,8 +21,6 @@ symlinkPath = "/opt/blender/launcher/"
 	# error checking if the input is a file or folder
 	# if format in [".bz2", ".tar"]:
 
-
-
 tar = tarfile.open(blenderFolder)
 tar.extractall(path=installationPath)
 tar.close()
